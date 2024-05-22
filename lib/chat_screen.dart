@@ -21,24 +21,26 @@ class _ChatScreenState extends State<ChatScreen>{
   Color purple = Color.fromARGB(255, 108, 92, 231);
   Color black = Color.fromARGB(255, 5, 5, 5);
   TextEditingController msgInputController = TextEditingController();
-    TextEditingController textController = TextEditingController();
+    TextEditingController hourController = TextEditingController();
+
+  TextEditingController textController = TextEditingController();
 
 late IO.Socket socket;
 ChatController chatController = ChatController();
 
 @override
-  // void initState() {
-  //   socket = IO.io(
-  //     'http://localhost:4000',
-  //      IO.OptionBuilder()
-  //         .setTransports(['websocket'])
-  //         .disableAutoConnect()
-  //         .build());
-  //   socket.connect();
-  //   setUpSocketListener();
-  //   super.initState();
-  //   print("Socket connected: ${socket.connected} --- Socket id: ${socket.id}");
-  // }
+  void initState() {
+    socket = IO.io(
+      'http://localhost:4000',
+       IO.OptionBuilder()
+          .setTransports(['websocket'])
+          .disableAutoConnect()
+          .build());
+    socket.connect();
+    setUpSocketListener();
+    super.initState();
+    print("Socket connected: ${socket.connected} --- Socket id: ${socket.id}");
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,6 +72,7 @@ ChatController chatController = ChatController();
                   return MessageItem(
                     sentByMe: currentItem.sentByMe == socket.id,
                     message: currentItem.message,
+                    hora: currentItem.hora,
                     );
                   },
                 ),
@@ -103,8 +106,11 @@ ChatController chatController = ChatController();
                       //color: purple,
                       child: IconButton(
                         onPressed: () {
-                          sendMessage(msgInputController.text);
+                          DateTime now = DateTime.now();
+                          hourController.text = '${now.hour}:${now.minute}';
+                          sendMessage(msgInputController.text, hourController.text);
                           msgInputController.text="";
+                          
                         },
                         icon: Icon(Icons.send, color: Colors.white,),
                       )
@@ -145,15 +151,15 @@ ChatController chatController = ChatController();
                 ),
                 SizedBox(width: 10), // Separación entre el campo de entrada de texto y el botón
                 // Botón
-                Container(
-                  child: IconButton(
-                        onPressed: () {
-                          createConnection(textController.text);
-                          textController.text="";
-                        },
-                        icon: Icon(Icons.send, color: Colors.white,),
-                      )
-                ),
+                // Container(
+                //   child: IconButton(
+                //         onPressed: () {
+                //           createConnection(textController.text);
+                //           textController.text="";
+                //         },
+                //         icon: Icon(Icons.send, color: Colors.white,),
+                //       )
+                // ),
               ],
             ),
           )
@@ -164,31 +170,32 @@ ChatController chatController = ChatController();
     );
   }
   
-  void sendMessage(String text) {
+  void sendMessage(String text, String hour) {
     print(socket);
     print(socket.id);
     print(socket.connected);
   var messageJson = {
     "message": text,
-    "sentByMe": socket.id ?? "" // Asigna una cadena vacía si socket.id es nulo
+    "sentByMe": socket.id ?? "",
+    "hora": hour, 
   };
   print('Mensaje: $messageJson');
   socket.emit('message', messageJson);
   chatController.chatMessages.add(Message.fromJson(messageJson));
 }
 
-void createConnection(String room) {
-    socket = IO.io(
-      'http://localhost:4000/${room}',
-       IO.OptionBuilder()
-          .setTransports(['websocket'])
-          .disableAutoConnect()
-          .build());
-    socket.connect();
-    setUpSocketListener();
-    super.initState();
-    print("Socket connected: ${socket.connected} --- Socket id: ${socket.id}");
-  }
+// void createConnection(String room) {
+//     socket = IO.io(
+//       'http://localhost:4000/${room}',
+//        IO.OptionBuilder()
+//           .setTransports(['websocket'])
+//           .disableAutoConnect()
+//           .build());
+//     socket.connect();
+//     setUpSocketListener();
+//     super.initState();
+//     print("Socket connected: ${socket.connected} --- Socket id: ${socket.id}");
+//   }
 
   void setUpSocketListener() {
     socket.on('message-receive', (data){
@@ -203,11 +210,12 @@ void createConnection(String room) {
 }
 
 class MessageItem extends StatelessWidget {
-  const MessageItem({Key? key, required this.sentByMe, required this.message})
+  const MessageItem({Key? key, required this.sentByMe, required this.message, required this.hora})
       : super(key: key);
 
   final bool sentByMe;
   final String message;
+  final String hora;
 
   @override
   Widget build(BuildContext context) {
@@ -237,7 +245,7 @@ class MessageItem extends StatelessWidget {
             ),
             SizedBox(width: 5),
             Text(
-              "1:10 AM",
+              hora ?? '?',
               style: TextStyle(
                 color: (sentByMe ? white : purple).withOpacity(0.7),
                 fontSize: 10,
